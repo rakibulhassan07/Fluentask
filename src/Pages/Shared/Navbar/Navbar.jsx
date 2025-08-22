@@ -1,31 +1,29 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout } from "react-icons/md";
 import { FaTasks, FaUser } from "react-icons/fa";
+import { AuthContext } from "../../../provider/AuthProvider";
 
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
-  // Mock user state - replace with your actual auth logic
-  const [user, setUser] = useState(null); // null = logged out, object = logged in
-  // Example logged in state: { name: "John Doe", email: "john@example.com", avatar: null }
+  const { user, logOut } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogin = () => {
-    // Mock login - replace with your actual login logic
-    setUser({
-      name: "John Doe",
-      email: "john.doe@example.com",
-      avatar: null
-    });
+    navigate('/login');
   };
 
-  const handleLogout = () => {
-    // Mock logout - replace with your actual logout logic
-    setUser(null);
-    setIsProfileOpen(false);
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      setIsProfileOpen(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const getInitials = (name) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(word => word.charAt(0))
@@ -33,6 +31,18 @@ const Navbar = () => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const [imageError, setImageError] = useState(false);
+
+  const handleImageError = () => {
+    console.log('Image failed to load:', user?.photoURL);
+    setImageError(true);
+  };
+
+
+
+  
+
 
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
@@ -67,6 +77,7 @@ const Navbar = () => {
                 <MdPeople className="w-4 h-4" />
                 Team
               </Link>
+             
             </div>
           </nav>
 
@@ -80,21 +91,22 @@ const Navbar = () => {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  {user.avatar ? (
+                  {user.photoURL && !imageError ? (
                     <img
-                      src={user.avatar}
+                      src={user.photoURL}
                       alt="Profile"
                       className="w-8 h-8 rounded-full object-cover border-2 border-gray-300"
+                      onError={handleImageError}
                     />
                   ) : (
                     <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-sm font-semibold">
-                        {getInitials(user.name)}
+                        {getInitials(user.displayName || user.email)}
                       </span>
                     </div>
                   )}
                   <span className="text-sm font-medium text-gray-700">
-                    {user.name.split(' ')[0]}
+                    {user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0]}
                   </span>
                 </button>
 
@@ -104,22 +116,23 @@ const Navbar = () => {
                     {/* User Info Header */}
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center space-x-3">
-                        {user.avatar ? (
+                        {user.photoURL && !imageError ? (
                           <img
-                            src={user.avatar}
+                            src={user.photoURL}
                             alt="Profile"
                             className="w-10 h-10 rounded-full object-cover"
+                            onError={handleImageError}
                           />
                         ) : (
                           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                             <span className="text-white font-semibold">
-                              {getInitials(user.name)}
+                              {getInitials(user.displayName || user.email)}
                             </span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 truncate">
-                            {user.name}
+                            {user.displayName || user.email.split('@')[0]}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {user.email}
@@ -168,6 +181,7 @@ const Navbar = () => {
                 <span className="text-sm font-medium text-gray-700">Login</span>
               </button>
             )}
+            
 
             {/* Create Task Button */}
             <Link

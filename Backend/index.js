@@ -23,8 +23,24 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    await client.connect();
+    const usersCollection = client.db('Fluentask').collection('users')
     
+    app.get('/users', async(req, res) => {
+     const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      // Check if user already exists
+      const existingUser = await usersCollection.findOne({ email: user.email });
+      if (existingUser) {
+        return res.send({ message: 'User already exists',insertedId:null });
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
