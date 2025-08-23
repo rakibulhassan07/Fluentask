@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.lf0gvrt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -24,8 +24,10 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    const usersCollection = client.db('Fluentask').collection('users')
+    const usersCollection = client.db('Fluentask').collection('users');
+    const teamsCollection = client.db('Fluentask').collection('teams');
     
+    // Users endpoints
     app.get('/users', async(req, res) => {
      const result = await usersCollection.find().toArray();
       res.send(result);
@@ -41,6 +43,61 @@ async function run() {
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
+
+    // Update user role endpoint
+    app.put('/users/:id/role', async(req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { role: role },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Update user role by email endpoint
+    app.put('/users/email/:email/role', async(req, res) => {
+      const email = req.params.email;
+      const { role } = req.body;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: role },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Teams endpoints
+    app.get('/teams', async(req, res) => {
+      const result = await teamsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post('/teams', async(req, res) => {
+      const team = req.body;
+      const result = await teamsCollection.insertOne(team);
+      res.send(result);
+    });
+
+    app.put('/teams/:id', async(req, res) => {
+      const id = req.params.id;
+      const updatedTeam = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updatedTeam,
+      };
+      const result = await teamsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete('/teams/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await teamsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection

@@ -6,6 +6,9 @@ import { FaGithub } from 'react-icons/fa';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {getAuth, GithubAuthProvider, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import Swal from 'sweetalert2';
+import useAxiosPublic from '../../Hook/useAxiosPublic';
+
 const auth = getAuth();
 const Login = () => {
     const navigate = useNavigate();
@@ -13,56 +16,169 @@ const Login = () => {
     const GoogleProvider= new GoogleAuthProvider();
     const GithubProvider = new GithubAuthProvider();
     const from = location.state?.from?.pathname || '/';
-
+     const axiosPublic = useAxiosPublic();
     const handleGoogleSignIn = () => {
         signInWithPopup(auth, GoogleProvider)
-            .then((result) => { 
-                const user = result.user;
-                console.log('Google Sign In Success:', user);
-                console.log('User email:', user.email);
-                console.log('User name:', user.displayName);
+            .then((result) => {
+                const userInfo = {
+                    name: result.user?.displayName,
+                    email: result.user?.email,
+                    photo: result.user?.photoURL,
+                    role: 'User'
+                }
                 
-                toast.success(`Successfully signed in with Google!`, {
-                    position: "top-center",
-                    autoClose: 2000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
-                
-                setTimeout(() => navigate(from, { replace: true }), 2000);
+                axiosPublic.post('/users', userInfo)
+                    .then((response) => {
+                        if (response.data.insertedId) {
+                            // User successfully signed in and data saved
+                            Swal.fire({
+                                title: "Success!",
+                                text: "Login Successful",
+                                icon: "success",
+                                confirmButtonText: "OK"
+                            });
+                            
+                            setTimeout(() => {
+                                navigate(from, { replace: true });
+                            }, 2000);
+                        } else {
+                            // User already exists, show success message and navigate
+                            Swal.fire({
+                                title: "Welcome Back!",
+                                text: "Login Successful",
+                                icon: "success",
+                                confirmButtonText: "OK"
+                            });
+                            
+                            setTimeout(() => {
+                                navigate(from, { replace: true });
+                            }, 2000);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Database error:', error);
+                        Swal.fire({
+                            title: "Error!",
+                            text: "Failed to save user data. Please try again.",
+                            icon: "error",
+                            confirmButtonText: "OK"
+                        });
+                    });
             })
             .catch((error) => {
-                console.error('Google Sign In Error:', error);
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
+                // Handle sign-in errors
+                console.error('Google Sign-In error:', error);
+                if (error.code === 'auth/email-already-in-use') {
+                    Swal.fire({
+                        title: "Email Already Exists!",
+                        text: "This email is already registered. Please use a different email or try logging in.",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    Swal.fire({
+                        title: "Cancelled!",
+                        text: "Sign in was cancelled. Please try again.",
+                        icon: "info",
+                        confirmButtonText: "OK"
+                    });
+                } else if (error.code === 'auth/popup-blocked') {
+                    Swal.fire({
+                        title: "Popup Blocked!",
+                        text: "Please allow popups and try again.",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                } else {
+                    Swal.fire({
+                        title: "Error!",
+                        text: "Google sign in failed. Please try again.",
+                        icon: "error",
+                        confirmButtonText: "OK"
+                    });
+                }
             });
     };
 
     const handleGithubSignIn = () => {
-       signInWithPopup(auth, GithubProvider)
-            .then((result) => { 
-                const user = result.user;
-                console.log('Github Sign In Success:', user);
-                console.log('User email:', user.email);
-                console.log('User name:', user.displayName);
+        signInWithPopup(auth, GithubProvider)
+            .then((result) => {
+                const userInfo = {
+                    name: result.user?.displayName,
+                    email: result.user?.email,
+                    photo: result.user?.photoURL,
+                    role: 'user'
+                }
                 
-                toast.success(`Successfully signed in with Github!`, {
-                    position: "top-center",
-                    autoClose: 2000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
-                
-                setTimeout(() => navigate(from, { replace: true }), 2000);
+                axiosPublic.post('/users', userInfo)
+                    .then((response) => {
+                        if (response.data.insertedId) {
+                            // User successfully signed in and data saved
+                            Swal.fire({
+                                title: "Success!",
+                                text: "GitHub Login Successful",
+                                icon: "success",
+                                confirmButtonText: "OK"
+                            });
+                            
+                            setTimeout(() => {
+                                navigate(from, { replace: true });
+                            }, 2000);
+                        } else {
+                            // User already exists, show success message and navigate
+                            Swal.fire({
+                                title: "Welcome Back!",
+                                text: "GitHub Login Successful",
+                                icon: "success",
+                                confirmButtonText: "OK"
+                            });
+                            
+                            setTimeout(() => {
+                                navigate(from, { replace: true });
+                            }, 2000);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Database error:', error);
+                        Swal.fire({
+                            title: "Error!",
+                            text: "Failed to save user data. Please try again.",
+                            icon: "error",
+                            confirmButtonText: "OK"
+                        });
+                    });
             })
             .catch((error) => {
-                console.error('Github Sign In Error:', error);
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
+                console.error('GitHub Sign In Error:', error);
+                if (error.code === 'auth/account-exists-with-different-credential') {
+                    Swal.fire({
+                        title: "Account Exists!",
+                        text: "This email is already registered with Google. Please sign in with Google instead.",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    Swal.fire({
+                        title: "Cancelled!",
+                        text: "GitHub sign in was cancelled. Please try again.",
+                        icon: "info",
+                        confirmButtonText: "OK"
+                    });
+                } else if (error.code === 'auth/popup-blocked') {
+                    Swal.fire({
+                        title: "Popup Blocked!",
+                        text: "Please allow popups and try again.",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                } else {
+                    Swal.fire({
+                        title: "Error!",
+                        text: "GitHub sign in failed. Please try again.",
+                        icon: "error",
+                        confirmButtonText: "OK"
+                    });
+                }
             });
     };
     return (

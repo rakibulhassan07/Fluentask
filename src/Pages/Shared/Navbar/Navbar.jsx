@@ -6,6 +6,7 @@ import { AuthContext } from "../../../provider/AuthProvider";
 
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const { user, logOut } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -17,6 +18,7 @@ const Navbar = () => {
     try {
       await logOut();
       setIsProfileOpen(false);
+      setIsNotificationOpen(false); // Close notification dropdown on logout
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -65,6 +67,10 @@ const Navbar = () => {
                 <MdDashboard className="w-4 h-4" />
                 Home
               </Link>
+               <Link to="/team" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
+                <MdPeople className="w-4 h-4" />
+                Team
+              </Link>
               <Link to="/projects" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
                 <FaTasks className="w-4 h-4" />
                 Projects
@@ -73,16 +79,104 @@ const Navbar = () => {
                 <MdAssignment className="w-4 h-4" />
                 Tasks
               </Link>
-              <Link to="/team" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
-                <MdPeople className="w-4 h-4" />
-                Team
-              </Link>
+             
              
             </div>
           </nav>
 
           {/* Right: Actions */}
           <div className="flex items-center space-x-4 flex-shrink-0">
+            {/* Notifications - Only show when user is logged in */}
+            {user && (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <MdNotifications className="w-5 h-5 text-gray-600" />
+                  {/* Notification badge */}
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                    3
+                  </span>
+                </button>
+
+                {/* Notifications Dropdown */}
+                {isNotificationOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    {/* Header */}
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                        <button 
+                          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          onClick={() => setIsNotificationOpen(false)}
+                        >
+                          Mark all as read
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notifications List */}
+                    <div className="max-h-96 overflow-y-auto">
+                      {/* Sample Notifications */}
+                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900 font-medium">New task assigned to you</p>
+                            <p className="text-xs text-gray-500 mt-1">Implement Task Management API - Due tomorrow</p>
+                            <p className="text-xs text-gray-400 mt-1">2 minutes ago</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900 font-medium">Task completed</p>
+                            <p className="text-xs text-gray-500 mt-1">John Doe completed "Design User Authentication Flow"</p>
+                            <p className="text-xs text-gray-400 mt-1">1 hour ago</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900 font-medium">Deadline approaching</p>
+                            <p className="text-xs text-gray-500 mt-1">Write Documentation - Due in 2 days</p>
+                            <p className="text-xs text-gray-400 mt-1">3 hours ago</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900 font-medium">Team member joined</p>
+                            <p className="text-xs text-gray-500 mt-1">Sarah Wilson joined your project team</p>
+                            <p className="text-xs text-gray-400 mt-1">1 day ago</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 border-t border-gray-200">
+                      <button 
+                        className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        onClick={() => setIsNotificationOpen(false)}
+                      >
+                        View all notifications
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Profile Section */}
             {user ? (
@@ -183,23 +277,19 @@ const Navbar = () => {
             )}
             
 
-            {/* Create Task Button */}
-            <Link
-              to="/create-task"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <MdAdd className="w-4 h-4" />
-              <span>Create</span>
-            </Link>
+            
           </div>
         </div>
       </div>
 
-      {/* Click outside to close dropdown */}
-      {isProfileOpen && (
+      {/* Click outside to close dropdowns */}
+      {(isProfileOpen || isNotificationOpen) && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setIsProfileOpen(false)}
+          onClick={() => {
+            setIsProfileOpen(false);
+            setIsNotificationOpen(false);
+          }}
         ></div>
       )}
     </div>

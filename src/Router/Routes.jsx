@@ -12,6 +12,7 @@ import Team from "../Pages/Team/Team";
 import Profile from "../Pages/Profile/Profile";
 import Settings from "../Pages/Settings/Settings";
 import CreateTask from "../Pages/CreateTask/CreateTask";
+import PrivateRoute from "./PrivateRoute";
 
 export const router = createBrowserRouter([
   {
@@ -33,15 +34,27 @@ export const router = createBrowserRouter([
       
       {
         path: "/projects",
-        element: <Projects></Projects>,
+        element: (
+          <PrivateRoute>
+            <Projects></Projects>
+          </PrivateRoute>
+        ),
       },
       {
         path: "/tasks",
-        element: <Tasks></Tasks>,
+        element:(
+          <PrivateRoute>
+            <Tasks></Tasks>
+          </PrivateRoute>
+        ),
       },
       {
         path: "/team",
-        element: <Team></Team>,
+        element: (
+          <PrivateRoute>
+            <Team></Team>
+          </PrivateRoute>
+        ),
       },
       {
         path: "/profile",
@@ -53,7 +66,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/create-task",
-        element: <CreateTask></CreateTask>,
+        element: (
+          <PrivateRoute>
+            <CreateTask></CreateTask>
+          </PrivateRoute>
+        ),
       }
     
     ],
