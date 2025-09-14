@@ -1,13 +1,18 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout } from "react-icons/md";
+import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout, MdCheck, MdClose } from "react-icons/md";
 import { FaTasks, FaUser } from "react-icons/fa";
 import { AuthContext } from "../../../provider/AuthProvider";
+import useAxiosPublic from "../../../Hook/useAxiosPublic";
 
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [invitations, setInvitations] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [users, setUsers] = useState([]);
   const { user, logOut } = useContext(AuthContext);
+  const axiosPublic = useAxiosPublic();
   const navigate = useNavigate();
 
   const handleLogin = () => {
@@ -36,9 +41,95 @@ const Navbar = () => {
 
   const [imageError, setImageError] = useState(false);
 
+  // Fetch invitations and notifications when user is logged in
+  useEffect(() => {
+    if (user?.email) {
+      fetchInvitations();
+      fetchUsers();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.email && users.length > 0) {
+      fetchNotifications();
+    }
+  }, [user, users]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axiosPublic.get('/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchInvitations = async () => {
+    try {
+      const response = await axiosPublic.get(`/invitations/user/${user?.email}`);
+      setInvitations(response.data);
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const currentUser = users.find(u => u.email === user?.email);
+      if (currentUser?._id) {
+        const response = await axiosPublic.get(`/notifications/user/${currentUser._id}`);
+        setNotifications(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId) => {
+    try {
+      await axiosPublic.put(`/invitations/${invitationId}/accept`);
+      fetchInvitations(); // Refresh invitations
+      fetchNotifications(); // Refresh notifications
+      // You might want to show a success message here
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      // You might want to show an error message here
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId) => {
+    try {
+      await axiosPublic.put(`/invitations/${invitationId}/decline`);
+      fetchInvitations(); // Refresh invitations
+      fetchNotifications(); // Refresh notifications
+      // You might want to show a success message here
+    } catch (error) {
+      console.error('Error declining invitation:', error);
+      // You might want to show an error message here
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const currentUser = users.find(u => u.email === user?.email);
+      if (currentUser?._id) {
+        await axiosPublic.put(`/notifications/user/${currentUser._id}/mark-all-read`);
+        fetchNotifications(); // Refresh notifications
+      }
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
   const handleImageError = () => {
     console.log('Image failed to load:', user?.photoURL);
     setImageError(true);
+  };
+
+  const getTotalNotificationCount = () => {
+    const unreadNotifications = notifications.filter(n => !n.read).length;
+    const pendingInvitations = invitations.length;
+    return unreadNotifications + pendingInvitations;
   };
 
 
@@ -95,9 +186,11 @@ const Navbar = () => {
                 >
                   <MdNotifications className="w-5 h-5 text-gray-600" />
                   {/* Notification badge */}
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                    3
-                  </span>
+                  {getTotalNotificationCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                      {getTotalNotificationCount() > 99 ? '99+' : getTotalNotificationCount()}
+                    </span>
+                  )}
                 </button>
 
                 {/* Notifications Dropdown */}
@@ -109,7 +202,7 @@ const Navbar = () => {
                         <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                         <button 
                           className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                          onClick={() => setIsNotificationOpen(false)}
+                          onClick={markAllAsRead}
                         >
                           Mark all as read
                         </button>
@@ -118,50 +211,75 @@ const Navbar = () => {
 
                     {/* Notifications List */}
                     <div className="max-h-96 overflow-y-auto">
-                      {/* Sample Notifications */}
-                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900 font-medium">New task assigned to you</p>
-                            <p className="text-xs text-gray-500 mt-1">Implement Task Management API - Due tomorrow</p>
-                            <p className="text-xs text-gray-400 mt-1">2 minutes ago</p>
+                      {/* Team Invitations */}
+                      {invitations.map((invitation) => (
+                        <div key={invitation._id} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900 font-medium">Team Invitation</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {invitation.inviterName} invited you to join "{invitation.teamName}"
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(invitation.createdAt).toLocaleDateString()}
+                              </p>
+                              <div className="flex gap-2 mt-2">
+                                <button
+                                  onClick={() => handleAcceptInvitation(invitation._id)}
+                                  className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                >
+                                  <MdCheck className="w-3 h-3" />
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineInvitation(invitation._id)}
+                                  className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                                >
+                                  <MdClose className="w-3 h-3" />
+                                  Decline
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
 
-                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900 font-medium">Task completed</p>
-                            <p className="text-xs text-gray-500 mt-1">John Doe completed "Design User Authentication Flow"</p>
-                            <p className="text-xs text-gray-400 mt-1">1 hour ago</p>
+                      {/* Regular Notifications */}
+                      {notifications.map((notification) => (
+                        <div key={notification._id} className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}>
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                              notification.type === 'invitation_accepted' ? 'bg-green-500' :
+                              notification.type === 'invitation_declined' ? 'bg-red-500' :
+                              'bg-blue-500'
+                            }`}></div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900 font-medium">
+                                {notification.type === 'invitation_accepted' ? 'Invitation Accepted' :
+                                 notification.type === 'invitation_declined' ? 'Invitation Declined' :
+                                 'Notification'}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
+                              {notification.teamName && (
+                                <p className="text-xs text-gray-400 mt-1">Team: {notification.teamName}</p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notification.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
 
-                      <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900 font-medium">Deadline approaching</p>
-                            <p className="text-xs text-gray-500 mt-1">Write Documentation - Due in 2 days</p>
-                            <p className="text-xs text-gray-400 mt-1">3 hours ago</p>
-                          </div>
+                      {/* No notifications message */}
+                      {invitations.length === 0 && notifications.length === 0 && (
+                        <div className="p-8 text-center">
+                          <MdNotifications className="mx-auto h-12 w-12 text-gray-400" />
+                          <h3 className="mt-2 text-sm font-medium text-gray-900">No notifications</h3>
+                          <p className="mt-1 text-sm text-gray-500">You're all caught up!</p>
                         </div>
-                      </div>
-
-                      <div className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900 font-medium">Team member joined</p>
-                            <p className="text-xs text-gray-500 mt-1">Sarah Wilson joined your project team</p>
-                            <p className="text-xs text-gray-400 mt-1">1 day ago</p>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Footer */}

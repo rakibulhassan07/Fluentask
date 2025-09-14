@@ -81,11 +81,15 @@ const Team = () => {
             // Find current user in users array to get their _id
             const currentUser = users.find(u => u.email === user?.email);
             
-            // Add current user as team creator and leader
+            // Create team with only the leader initially (no members yet)
             const teamData = {
-                ...teamForm,
-                createdBy: user?.name || user?.email, // Add creator name
-                leader: currentUser?._id // Set current user as leader
+                name: teamForm.name,
+                description: teamForm.description,
+                project: teamForm.project,
+                createdAt: new Date().toISOString(),
+                createdBy: user?.name || user?.email,
+                leader: currentUser?._id,
+                members: [] // Start with empty members array
             };
 
             const response = await axiosPublic.post('/teams', teamData);
@@ -93,11 +97,33 @@ const Team = () => {
                 // Update current user's role to "leader" in the database
                 try {
                     await axiosPublic.put(`/users/email/${user?.email}/role`, { role: 'leader' });
-                    toast.success('Team created successfully! You are now the team leader.');
                 } catch (roleError) {
                     console.error('Error updating leader role:', roleError);
-                    toast.success('Team created successfully! (Note: Leader role update failed)');
                 }
+
+                // Send invitations to selected members
+                const teamId = response.data.insertedId;
+                const invitationPromises = teamForm.members.map(async (memberId) => {
+                    const member = getUserById(memberId);
+                    if (member) {
+                        const invitation = {
+                            teamId: teamId,
+                            teamName: teamForm.name,
+                            inviterId: currentUser?._id,
+                            inviterName: user?.name || user?.email,
+                            inviteeId: memberId,
+                            inviteeName: member.name || member.email,
+                            inviteeEmail: member.email,
+                            status: 'pending',
+                            createdAt: new Date().toISOString()
+                        };
+                        return axiosPublic.post('/invitations', invitation);
+                    }
+                });
+
+                await Promise.all(invitationPromises);
+                
+                toast.success(`Team created successfully! Invitations sent to ${teamForm.members.length} member(s).`);
                 
                 setShowCreateTeamModal(false);
                 setTeamForm({
@@ -305,7 +331,7 @@ const Team = () => {
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                                     <p className="text-sm text-blue-800">
                                         <strong>Note:</strong> You ({user?.name || user?.email}) will be the team creator and team leader automatically. 
-                                        Select other registered users as team members.
+                                        Selected users will receive team invitations and must accept them to join the team.
                                     </p>
                                 </div>
 
@@ -345,11 +371,13 @@ const Team = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Team Members * ({teamForm.members.length} selected)
+                                        Invite Team Members * ({teamForm.members.length} selected)
                                     </label>
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                                        <p className="text-sm text-blue-800">
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                                        <p className="text-sm text-yellow-800">
                                             <strong>Team Leader:</strong> You ({user?.name || user?.email}) will be the team leader automatically.
+                                            <br />
+                                            <strong>Invitations:</strong> Selected users will receive invitations and can choose to accept or decline.
                                         </p>
                                     </div>
                                     <div className="border border-gray-300 rounded-md max-h-40 overflow-y-auto">
