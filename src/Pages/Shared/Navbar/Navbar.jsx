@@ -121,6 +121,26 @@ const Navbar = () => {
     }
   };
 
+  const handleNotificationClick = async (notification) => {
+    try {
+      // Mark the notification as read
+      if (!notification.read) {
+        await axiosPublic.put(`/notifications/${notification._id}/mark-read`);
+        fetchNotifications(); // Refresh notifications
+      }
+
+      // Navigate based on notification type
+      if (notification.type === 'invitation_accepted' || notification.type === 'invitation_declined') {
+        navigate('/team');
+      }
+      
+      // Close the notification dropdown
+      setIsNotificationOpen(false);
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+    }
+  };
+
   const handleImageError = () => {
     console.log('Image failed to load:', user?.photoURL);
     setImageError(true);
@@ -213,28 +233,39 @@ const Navbar = () => {
                     <div className="max-h-96 overflow-y-auto">
                       {/* Team Invitations */}
                       {invitations.map((invitation) => (
-                        <div key={invitation._id} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div key={invitation._id} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors bg-yellow-50 border-l-4 border-l-yellow-400">
                           <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
                             <div className="flex-1">
-                              <p className="text-sm text-gray-900 font-medium">Team Invitation</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm text-gray-900 font-medium">Team Invitation</p>
+                                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
+                                  Pending
+                                </span>
+                              </div>
                               <p className="text-xs text-gray-500 mt-1">
                                 {invitation.inviterName} invited you to join "{invitation.teamName}"
                               </p>
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(invitation.createdAt).toLocaleDateString()}
                               </p>
-                              <div className="flex gap-2 mt-2">
+                              <div className="flex gap-2 mt-3">
                                 <button
-                                  onClick={() => handleAcceptInvitation(invitation._id)}
-                                  className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptInvitation(invitation._id);
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 transition-colors"
                                 >
                                   <MdCheck className="w-3 h-3" />
                                   Accept
                                 </button>
                                 <button
-                                  onClick={() => handleDeclineInvitation(invitation._id)}
-                                  className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeclineInvitation(invitation._id);
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors"
                                 >
                                   <MdClose className="w-3 h-3" />
                                   Decline
@@ -247,7 +278,11 @@ const Navbar = () => {
 
                       {/* Regular Notifications */}
                       {notifications.map((notification) => (
-                        <div key={notification._id} className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}>
+                        <div 
+                          key={notification._id} 
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
+                        >
                           <div className="flex items-start space-x-3">
                             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
                               notification.type === 'invitation_accepted' ? 'bg-green-500' :
@@ -267,6 +302,12 @@ const Navbar = () => {
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleDateString()}
                               </p>
+                              {!notification.read && (
+                                <div className="flex items-center mt-1">
+                                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></div>
+                                  <span className="text-xs text-blue-600 font-medium">New</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -286,7 +327,11 @@ const Navbar = () => {
                     <div className="p-4 border-t border-gray-200">
                       <button 
                         className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
-                        onClick={() => setIsNotificationOpen(false)}
+                        onClick={() => {
+                          setIsNotificationOpen(false);
+                          // You can navigate to a dedicated notifications page here if you have one
+                          // navigate('/notifications');
+                        }}
                       >
                         View all notifications
                       </button>

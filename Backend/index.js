@@ -225,6 +225,17 @@ async function run() {
       res.send(result);
     });
 
+    // Mark individual notification as read
+    app.put('/notifications/:id/mark-read', async(req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { read: true },
+      };
+      const result = await notificationsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
