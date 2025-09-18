@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../../provider/AuthProvider';
+import useAxiosPublic from '../../Hook/useAxiosPublic';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import {
     MdAdd,
-    MdFilterList,
     MdViewModule,
     MdViewList,
     MdEdit,
@@ -12,60 +13,36 @@ import {
     MdCalendarToday,
     MdClose,
     MdAssignment,
-    MdVisibility
+    MdVisibility,
+    MdAccessTime
 } from 'react-icons/md';
 
 const Tasks = () => {
+    const { user } = useContext(AuthContext);
+    const axiosPublic = useAxiosPublic();
+
     // Basic state
     const [tasks, setTasks] = useState([]);
+    const [teams, setTeams] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('kanban');
-    const [selectedAssignee, setSelectedAssignee] = useState('');
     
     // Modal states
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTaskDetails, setShowTaskDetails] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     
+    // Quick task creation state
+    const [quickTasks, setQuickTasks] = useState({
+        'To Do': '',
+        'In Progress': '',
+        'In Review': '',
+        'Done': ''
+    });
+    
     // Drag and drop
     const [draggedTask, setDraggedTask] = useState(null);
-
-    // Sample tasks for demo
-    const sampleTasks = [
-        {
-            id: '1',
-            title: 'Design User Authentication Flow',
-            description: 'Create wireframes and mockups for the user authentication system',
-            priority: 'High',
-            status: 'In Progress',
-            assignedTo: 'John Doe',
-            dueDate: '2024-01-15',
-            tags: ['Design', 'Authentication', 'UI/UX'],
-            progress: 50
-        },
-        {
-            id: '2',
-            title: 'Implement Task Management API',
-            description: 'Build REST API endpoints for CRUD operations on tasks',
-            priority: 'Critical',
-            status: 'To Do',
-            assignedTo: 'Jane Smith',
-            dueDate: '2024-01-20',
-            tags: ['Backend', 'API', 'Database'],
-            progress: 0
-        },
-        {
-            id: '3',
-            title: 'Write Documentation',
-            description: 'Create comprehensive documentation for the project',
-            priority: 'Medium',
-            status: 'Done',
-            assignedTo: 'Mike Johnson',
-            dueDate: '2024-01-10',
-            tags: ['Documentation', 'Writing'],
-            progress: 100
-        }
-    ];
 
     // Kanban columns
     const columns = [
@@ -75,13 +52,112 @@ const Tasks = () => {
         { id: 'Done', title: 'Done', color: 'bg-green-100' }
     ];
 
-    // Load sample data
+    // Load data on component mount
     useEffect(() => {
-        setTasks(sampleTasks);
-        setLoading(false);
+        fetchUsers();
+        fetchTasks();
     }, []);
+    
+    // Load teams after users are loaded
+    useEffect(() => {
+        if (users.length > 0) {
+            fetchTeams();
+        }
+    }, [users, user]);
+
+    // Check if current user is a team leader
+    const isTeamLeader = () => {
+        if (!user || teams.length === 0) return false;
+        // Check multiple possible user identification methods
+        const userIdentifiers = [
+            user.uid,
+            user.email,
+            user._id,
+            user.displayName,
+            user.name
+        ].filter(Boolean);
+        
+        return teams.some(team => 
+            userIdentifiers.some(identifier => 
+                team.leader === identifier || 
+                team.leaderId === identifier
+            )
+        );
+    };
+
+    const fetchTeams = async () => {
+        try {
+            const response = await axiosPublic.get('/teams');
+            const teamsData = response.data;
+            setTeams(teamsData);
+            
+            // Extract projects where current user is leader or member
+            if (user && teamsData.length > 0 && users.length > 0) {
+                const currentUserEmail = user.email;
+                const userProjects = [];
+                
+                teamsData.forEach(team => {
+                    // Find current user in users array
+                    const currentUser = users.find(u => u.email === currentUserEmail);
+                    if (!currentUser) return;
+                    
+                    // Check if user is team leader
+                    const isLeader = team.leader === currentUser._id;
+                    // Check if user is team member
+                    const isMember = team.members && team.members.includes(currentUser._id);
+                    
+                    if ((isLeader || isMember) && team.project && team.project.trim()) {
+                        // Check if project already exists in userProjects
+                        const existingProject = userProjects.find(p => p.name === team.project);
+                        if (!existingProject) {
+                            userProjects.push({
+                                name: team.project,
+                                teamName: team.name,
+                                role: isLeader ? 'Leader' : 'Member'
+                            });
+                        } else if (isLeader && existingProject.role === 'Member') {
+                            // Update role to Leader if user is leader in any team for this project
+                            existingProject.role = 'Leader';
+                        }
+                    }
+                });
+                
+                setProjects(userProjects);
+            }
+        } catch (error) {
+            console.error('Error fetching teams:', error);
+            toast.error('Failed to fetch teams');
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await axiosPublic.get('/users');
+            setUsers(response.data);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            toast.error('Failed to fetch users');
+            setLoading(false);
+        }
+    };
+
+    const fetchTasks = async () => {
+        try {
+            const response = await axiosPublic.get('/tasks');
+            setTasks(response.data);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            toast.error('Failed to fetch tasks');
+            setTasks([]);
+        }
+    };
 
     // Helper functions
+    const getUserById = (userId) => {
+        return users.find(user => user._id === userId);
+    };
+
     const isOverdue = (dueDate) => {
         return new Date(dueDate) < new Date();
     };
@@ -106,18 +182,98 @@ const Tasks = () => {
         return colors[index % colors.length];
     };
 
-    // Filter tasks by assignee
+    // Format creation time for display
+    const formatCreationTime = (createdAt) => {
+        if (!createdAt) return '';
+        const created = new Date(createdAt);
+        
+        // Format as: "Sep 19, 2025 at 2:30 PM"
+        const dateOptions = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric'
+        };
+        const timeOptions = { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true
+        };
+        
+        const dateStr = created.toLocaleDateString('en-US', dateOptions);
+        const timeStr = created.toLocaleTimeString('en-US', timeOptions);
+        
+        return `${dateStr} at ${timeStr}`;
+    };
+
+    // Format creation time for task cards (shorter format)
+    const formatCreationTimeShort = (createdAt) => {
+        if (!createdAt) return '';
+        const created = new Date(createdAt);
+        const now = new Date();
+        const isToday = created.toDateString() === now.toDateString();
+        
+        if (isToday) {
+            // Show time if created today: "2:30 PM"
+            return created.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true
+            });
+        } else {
+            // Show date if not today: "Sep 19"
+            return created.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric'
+            });
+        }
+    };
+
+    // Get team members from user's teams (where user is leader or member)
+    const getUserTeamMembers = () => {
+        if (!user || teams.length === 0 || users.length === 0) return [];
+        
+        const currentUser = users.find(u => u.email === user.email);
+        if (!currentUser) return [];
+        
+        const teamMemberIds = new Set();
+        
+        teams.forEach(team => {
+            // Check if current user is leader or member of this team
+            const isLeader = team.leader === currentUser._id;
+            const isMember = team.members && team.members.includes(currentUser._id);
+            
+            if (isLeader || isMember) {
+                // Add all team members to the set
+                if (team.members) {
+                    team.members.forEach(memberId => teamMemberIds.add(memberId));
+                }
+                // Add team leader too
+                if (team.leader) {
+                    teamMemberIds.add(team.leader);
+                }
+            }
+        });
+        
+        // Convert member IDs to user objects
+        return Array.from(teamMemberIds)
+            .map(memberId => users.find(user => user._id === memberId))
+            .filter(Boolean);
+    };
+
+    // Filter tasks by user's team access
     const filteredTasks = tasks.filter(task => {
-        return !selectedAssignee || task.assignedTo === selectedAssignee;
+        // Get team members that current user has access to
+        const accessibleMembers = getUserTeamMembers();
+        const accessibleMemberNames = accessibleMembers.map(member => member.name || member.email);
+        
+        // Only show tasks assigned to team members the user has access to
+        return accessibleMemberNames.includes(task.assignedTo);
     });
 
     // Get tasks for specific column
     const getColumnTasks = (status) => {
         return filteredTasks.filter(task => task.status === status);
     };
-
-    // Get unique assignees for filter
-    const uniqueAssignees = [...new Set(tasks.map(task => task.assignedTo))];
 
     // Delete task
     const handleDelete = async (taskId) => {
@@ -132,8 +288,61 @@ const Tasks = () => {
         });
 
         if (result.isConfirmed) {
-            setTasks(tasks.filter(task => task.id !== taskId));
-            toast.success('Task deleted successfully!');
+            try {
+                await axiosPublic.delete(`/tasks/${taskId}`);
+                fetchTasks(); // Refresh tasks list
+                toast.success('Task deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                toast.error('Failed to delete task');
+            }
+        }
+    };
+
+    // Quick task creation
+    const handleQuickTaskCreate = async (status) => {
+        const taskTitle = quickTasks[status].trim();
+        if (!taskTitle) return;
+
+        // Get current user for assignedTo (assign to self by default)
+        const currentUser = users.find(u => u.email === user?.email);
+        const assignedTo = currentUser ? (currentUser.name || currentUser.email) : (user?.name || user?.email);
+
+        const newTask = {
+            title: taskTitle,
+            description: '', // Empty description for quick tasks
+            priority: 'Medium',
+            status: status,
+            assignedTo: assignedTo,
+            dueDate: null,
+            estimatedHours: null,
+            tags: [],
+            createdBy: user?.name || user?.email || user?.displayName,
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            await axiosPublic.post('/tasks', newTask);
+            
+            // Clear the input
+            setQuickTasks(prev => ({
+                ...prev,
+                [status]: ''
+            }));
+            
+            // Refresh tasks list
+            fetchTasks();
+            toast.success('Task created successfully!');
+        } catch (error) {
+            console.error('Error creating quick task:', error);
+            toast.error('Failed to create task');
+        }
+    };
+
+    const handleQuickTaskKeyPress = (e, status) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleQuickTaskCreate(status);
         }
     };
 
@@ -146,15 +355,27 @@ const Tasks = () => {
         e.preventDefault();
     };
 
-    const handleDrop = (e, newStatus) => {
+    const handleDrop = async (e, newStatus) => {
         e.preventDefault();
         if (draggedTask && draggedTask.status !== newStatus) {
-            setTasks(tasks.map(task =>
-                task.id === draggedTask.id
-                    ? { ...task, status: newStatus }
-                    : task
-            ));
-            toast.success(`Task moved to ${newStatus}`);
+            try {
+                // Update task status in backend
+                await axiosPublic.put(`/tasks/${draggedTask._id}`, {
+                    ...draggedTask,
+                    status: newStatus
+                });
+                
+                // Update local state
+                setTasks(tasks.map(task =>
+                    task._id === draggedTask._id
+                        ? { ...task, status: newStatus }
+                        : task
+                ));
+                toast.success(`Task moved to ${newStatus}`);
+            } catch (error) {
+                console.error('Error updating task status:', error);
+                toast.error('Failed to update task status');
+            }
         }
         setDraggedTask(null);
     };
@@ -176,46 +397,45 @@ const Tasks = () => {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
                         </div>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium shadow-lg"
-                        >
-                            <MdAdd className="w-5 h-5" />
-                            Create Task
-                        </button>
                     </div>
+
+                    {/* Projects Section */}
+                    {projects.length > 0 && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <MdAssignment className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
+                                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                                    {projects.length}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {projects.map((project, index) => (
+                                    <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <h3 className="font-medium text-gray-900 text-sm">{project.name}</h3>
+                                                <p className="text-xs text-gray-600 mt-1">Team: {project.teamName}</p>
+                                            </div>
+                                            <div className="ml-2">
+                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                    project.role === 'Leader' 
+                                                        ? 'bg-yellow-100 text-yellow-800' 
+                                                        : 'bg-green-100 text-green-800'
+                                                }`}>
+                                                    {project.role}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Controls Bar */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-                            {/* Filters */}
-                            <div className="flex flex-wrap gap-2 items-center">
-                                <MdFilterList className="text-gray-500 w-5 h-5" />
-                                
-                                <select
-                                    value={selectedAssignee}
-                                    onChange={(e) => setSelectedAssignee(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">All Assignees</option>
-                                    {uniqueAssignees.map(assignee => (
-                                        <option key={assignee} value={assignee}>{assignee}</option>
-                                    ))}
-                                </select>
-
-                                {/* Clear Filters */}
-                                {selectedAssignee && (
-                                    <button
-                                        onClick={() => {
-                                            setSelectedAssignee('');
-                                        }}
-                                        className="px-3 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors text-sm"
-                                    >
-                                        Clear
-                                    </button>
-                                )}
-                            </div>
-
+                        <div className="flex justify-end">
                             {/* View Toggle */}
                             <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                                 <button
@@ -265,13 +485,13 @@ const Tasks = () => {
                                     <div className="space-y-3">
                                         {columnTasks.map(task => (
                                             <div
-                                                key={task.id}
+                                                key={task._id}
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, task)}
                                                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-move hover:shadow-md transition-all"
                                             >
                                                 {/* Task Header */}
-                                                <div className="flex justify-between items-start mb-2">
+                                                <div className="mb-2">
                                                     <h4 
                                                         className="font-medium text-gray-900 text-sm cursor-pointer hover:text-blue-600"
                                                         onClick={() => {
@@ -281,9 +501,6 @@ const Tasks = () => {
                                                     >
                                                         {task.title}
                                                     </h4>
-                                                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                        {task.priority}
-                                                    </div>
                                                 </div>
                                                 
                                                 {/* Task Description */}
@@ -325,29 +542,42 @@ const Tasks = () => {
                                                 )}
                                                 
                                                 {/* Task Footer */}
-                                                <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
-                                                    <div className="flex items-center gap-1">
-                                                        <MdPerson className="w-3 h-3" />
-                                                        <span>{task.assignedTo}</span>
-                                                    </div>
-                                                    {task.dueDate && (
-                                                        <div className={`flex items-center gap-1 ${isOverdue(task.dueDate) ? 'text-red-600' : 'text-gray-500'}`}>
-                                                            <MdCalendarToday className="w-3 h-3" />
-                                                            <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                                                <div className="space-y-1 mt-2">
+                                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <MdPerson className="w-3 h-3" />
+                                                            <span>{task.assignedTo}</span>
                                                         </div>
-                                                    )}
+                                                        {task.dueDate && (
+                                                            <div className={`flex items-center gap-1 ${isOverdue(task.dueDate) ? 'text-red-600' : 'text-gray-500'}`}>
+                                                                <MdCalendarToday className="w-3 h-3" />
+                                                                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Creation Time */}
+                                                    <div className="flex items-center gap-1 text-xs text-gray-400" title={`Created ${formatCreationTime(task.createdAt)}`}>
+                                                        <MdAccessTime className="w-3 h-3" />
+                                                        <span>{formatCreationTimeShort(task.createdAt)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
                                         
-                                        {/* Add Task Button */}
-                                        <button
-                                            onClick={() => setShowCreateModal(true)}
-                                            className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <MdAdd className="w-4 h-4" />
-                                            Add Task
-                                        </button>
+                                        {/* Quick Add Task Input */}
+                                        <div className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+                                            <input
+                                                type="text"
+                                                placeholder="What needs to be done?"
+                                                value={quickTasks[column.id]}
+                                                onChange={(e) => setQuickTasks(prev => ({
+                                                    ...prev,
+                                                    [column.id]: e.target.value
+                                                }))}
+                                                onKeyPress={(e) => handleQuickTaskKeyPress(e, column.id)}
+                                                className="w-full bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -369,7 +599,7 @@ const Tasks = () => {
                             ) : (
                                 <div className="space-y-3">
                                     {filteredTasks.map(task => (
-                                        <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                        <div key={task._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex-1">
                                                     <h4 className="font-medium text-gray-900">{task.title}</h4>
@@ -397,7 +627,7 @@ const Tasks = () => {
                                                         <MdVisibility className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(task.id)}
+                                                        onClick={() => handleDelete(task._id)}
                                                         className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors"
                                                     >
                                                         <MdDelete className="w-4 h-4" />
@@ -408,40 +638,6 @@ const Tasks = () => {
                                     ))}
                                 </div>
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Simple Create Task Modal */}
-                {showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-lg max-w-md w-full">
-                            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-semibold text-gray-900">Create New Task</h2>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-gray-400 hover:text-gray-600"
-                                >
-                                    <MdClose className="w-6 h-6" />
-                                </button>
-                            </div>
-                            
-                            <div className="p-6 text-center">
-                                <div className="mb-4">
-                                    <MdAdd className="mx-auto h-16 w-16 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">Task Creation Form</h3>
-                                <p className="text-gray-500 mb-6">
-                                    The task creation form will be implemented here with fields for title, description, 
-                                    priority, assignee, due date, and more.
-                                </p>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                >
-                                    Close
-                                </button>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -496,6 +692,16 @@ const Tasks = () => {
                                                 {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : 'Not set'}
                                             </p>
                                         </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-900 mb-1">Created</h4>
+                                            <p className="text-gray-600">
+                                                {selectedTask.createdAt ? formatCreationTime(selectedTask.createdAt) : 'Unknown'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-900 mb-1">Created By</h4>
+                                            <p className="text-gray-600">{selectedTask.createdBy || 'Unknown'}</p>
+                                        </div>
                                     </div>
                                     
                                     {/* Tags */}
@@ -520,7 +726,7 @@ const Tasks = () => {
                                         <button
                                             onClick={() => {
                                                 setShowTaskDetails(false);
-                                                handleDelete(selectedTask.id);
+                                                handleDelete(selectedTask._id);
                                             }}
                                             className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors flex items-center gap-2"
                                         >

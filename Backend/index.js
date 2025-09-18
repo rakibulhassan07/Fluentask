@@ -29,6 +29,7 @@ async function run() {
     const invitationsCollection = client.db('Fluentask').collection('invitations');
     const notificationsCollection = client.db('Fluentask').collection('notifications');
     const messagesCollection = client.db('Fluentask').collection('messages');
+    const tasksCollection = client.db('Fluentask').collection('tasks');
     
     // Users endpoints
     app.get('/users', async(req, res) => {
@@ -405,6 +406,68 @@ async function run() {
       } catch (error) {
         console.error('Error editing message:', error);
         res.status(500).send({ message: 'Failed to edit message' });
+      }
+    });
+
+    // Tasks endpoints
+    // Get all tasks - frontend will handle filtering by team membership
+    app.get('/tasks', async(req, res) => {
+      try {
+        const result = await tasksCollection.find().sort({ createdAt: -1 }).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        res.status(500).send({ message: 'Failed to fetch tasks' });
+      }
+    });
+
+    // Create a new task
+    app.post('/tasks', async(req, res) => {
+      try {
+        const task = {
+          ...req.body,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        const result = await tasksCollection.insertOne(task);
+        res.send(result);
+      } catch (error) {
+        console.error('Error creating task:', error);
+        res.status(500).send({ message: 'Failed to create task', error: error.message });
+      }
+    });
+
+    // Update a task
+    app.put('/tasks/:id', async(req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedTask = {
+          ...req.body,
+          updatedAt: new Date()
+        };
+        delete updatedTask._id; // Remove _id from update object
+        
+        const result = await tasksCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedTask }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating task:', error);
+        res.status(500).send({ message: 'Failed to update task' });
+      }
+    });
+
+    // Delete a task
+    app.delete('/tasks/:id', async(req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await tasksCollection.deleteOne({ _id: new ObjectId(id) });
+        res.send(result);
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        res.status(500).send({ message: 'Failed to delete task' });
       }
     });
 
