@@ -214,7 +214,7 @@ const Messages = () => {
                     <p className="text-gray-600 mt-2">Chat with your team members in real-time</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-200px)]">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Teams List */}
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col">
