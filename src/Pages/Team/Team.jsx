@@ -10,7 +10,8 @@ import {
     MdDelete,
     MdClose,
     MdAdminPanelSettings,
-    MdWork
+    MdWork,
+    MdChat
 } from 'react-icons/md';
 
 const Team = () => {
@@ -66,6 +67,12 @@ const Team = () => {
     const myTeams = teams.filter(team => {
         const currentUser = users.find(u => u.email === user?.email);
         return team.leader === currentUser?._id;
+    });
+
+    // Filter teams where current user is a member but not leader
+    const memberTeams = teams.filter(team => {
+        const currentUser = users.find(u => u.email === user?.email);
+        return team.members.includes(currentUser?._id) && team.leader !== currentUser?._id;
     });
 
     // Handle team creation
@@ -146,7 +153,12 @@ const Team = () => {
     const handleDeleteTeam = async (teamId) => {
         const result = await Swal.fire({
             title: 'Delete Team?',
-            text: 'This action cannot be undone!',
+            html: `
+                <p>This action cannot be undone!</p>
+                <p class="text-sm text-gray-600 mt-2">
+                    <strong>Note:</strong> All team messages will also be permanently deleted.
+                </p>
+            `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -156,8 +168,12 @@ const Team = () => {
 
         if (result.isConfirmed) {
             try {
-                await axiosPublic.delete(`/teams/${teamId}`);
-                toast.success('Team deleted successfully!');
+                const response = await axiosPublic.delete(`/teams/${teamId}`);
+                if (response.data.messagesDeleted) {
+                    toast.success('Team and all messages deleted successfully!');
+                } else {
+                    toast.success('Team deleted successfully!');
+                }
                 fetchTeams();
             } catch (error) {
                 console.error('Error deleting team:', error);
@@ -180,6 +196,11 @@ const Team = () => {
         return users.find(user => user._id === userId);
     };
 
+    // Navigate to messages page for team chat
+    const openTeamMessages = () => {
+        window.location.href = '/messages';
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -198,13 +219,16 @@ const Team = () => {
                             <h1 className="text-3xl font-bold text-gray-900">Team Management</h1>
                             <p className="text-gray-600">Manage your team members and create teams for projects</p>
                         </div>
-                        <button
-                            onClick={() => setShowCreateTeamModal(true)}
-                            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium shadow-lg"
-                        >
-                            <MdAdd className="w-5 h-5" />
-                            Create Team
-                        </button>
+                        <div className="flex gap-3">
+                            
+                            <button
+                                onClick={() => setShowCreateTeamModal(true)}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium shadow-lg"
+                            >
+                                <MdAdd className="w-5 h-5" />
+                                Create Team
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -241,12 +265,128 @@ const Team = () => {
                                                                 <p className="text-sm text-gray-600 mb-2">{team.description}</p>
                                                             )}
                                                         </div>
-                                                        <button
-                                                            onClick={() => handleDeleteTeam(team._id)}
-                                                            className="text-red-600 hover:text-red-800 ml-2"
-                                                        >
-                                                            <MdDelete className="w-4 h-4" />
-                                                        </button>
+                                                        <div className="flex items-center gap-2 ml-2">
+                                                            <button
+                                                                onClick={openTeamMessages}
+                                                                className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                                                                title="Open Team Messages"
+                                                            >
+                                                                <MdChat className="w-5 h-5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteTeam(team._id)}
+                                                                className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                                                                title="Delete Team"
+                                                            >
+                                                                <MdDelete className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Team Leader */}
+                                                    {teamLeader && (
+                                                        <div className="mb-3">
+                                                            <h4 className="text-xs font-medium text-gray-700 mb-1">Team Leader:</h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center">
+                                                                    {teamLeader.photoURL ? (
+                                                                        <img
+                                                                            src={teamLeader.photoURL}
+                                                                            alt={teamLeader.name}
+                                                                            className="w-6 h-6 rounded-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <MdAdminPanelSettings className="w-3 h-3 text-yellow-600" />
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-sm font-medium text-gray-900">
+                                                                    {teamLeader.name || teamLeader.email}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Team Members */}
+                                                    {teamMembersList.length > 0 && (
+                                                        <div className="mb-3">
+                                                            <h4 className="text-xs font-medium text-gray-700 mb-2">Members ({teamMembersList.length}):</h4>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {teamMembersList.map(member => (
+                                                                    <div key={member._id} className="flex items-center gap-1 bg-gray-50 rounded-full px-2 py-1">
+                                                                        <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                                                                            {member.photoURL ? (
+                                                                                <img
+                                                                                    src={member.photoURL}
+                                                                                    alt={member.name}
+                                                                                    className="w-5 h-5 rounded-full object-cover"
+                                                                                />
+                                                                            ) : (
+                                                                                <MdPerson className="w-3 h-3 text-blue-600" />
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-700">
+                                                                            {member.name || member.email.split('@')[0]}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
+                                                        {team.project && <p>Project: {team.project}</p>}
+                                                        <p>Created: {new Date(team.createdAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Member Teams Section */}
+                    <div>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div className="p-6 border-b border-gray-200">
+                                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                                    <MdPerson className="w-6 h-6" />
+                                    Teams I'm In ({memberTeams.length})
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">Teams where you are a member</p>
+                            </div>
+                            <div className="p-6">
+                                {memberTeams.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <MdPerson className="mx-auto h-12 w-12 text-gray-400" />
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900">Not a member of any teams yet</h3>
+                                        <p className="mt-1 text-sm text-gray-500">Accept team invitations to join teams.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {memberTeams.map(team => {
+                                            const teamLeader = team.leader ? getUserById(team.leader) : null;
+                                            const teamMembersList = team.members.map(memberId => getUserById(memberId)).filter(Boolean);
+
+                                            return (
+                                                <div key={team._id} className="border border-gray-200 rounded-lg p-4">
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div className="flex-1">
+                                                            <h3 className="font-medium text-gray-900 mb-1">{team.name}</h3>
+                                                            {team.description && (
+                                                                <p className="text-sm text-gray-600 mb-2">{team.description}</p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 ml-2">
+                                                            <button
+                                                                onClick={openTeamMessages}
+                                                                className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                                                                title="Open Team Messages"
+                                                            >
+                                                                <MdChat className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     
                                                     {/* Team Leader */}

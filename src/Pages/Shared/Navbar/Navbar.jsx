@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout, MdCheck, MdClose } from "react-icons/md";
+import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout, MdCheck, MdClose, MdChat } from "react-icons/md";
 import { FaTasks, FaUser } from "react-icons/fa";
 import { AuthContext } from "../../../provider/AuthProvider";
 import useAxiosPublic from "../../../Hook/useAxiosPublic";
@@ -182,6 +182,7 @@ const Navbar = () => {
                 <MdPeople className="w-4 h-4" />
                 Team
               </Link>
+              
               <Link to="/projects" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
                 <FaTasks className="w-4 h-4" />
                 Projects

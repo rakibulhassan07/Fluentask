@@ -28,6 +28,7 @@ async function run() {
     const teamsCollection = client.db('Fluentask').collection('teams');
     const invitationsCollection = client.db('Fluentask').collection('invitations');
     const notificationsCollection = client.db('Fluentask').collection('notifications');
+    const messagesCollection = client.db('Fluentask').collection('messages');
     
     // Users endpoints
     app.get('/users', async(req, res) => {
@@ -96,8 +97,48 @@ async function run() {
     app.delete('/teams/:id', async(req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await teamsCollection.deleteOne(query);
-      res.send(result);
+      
+      try {
+        // First, get the team to find the leader
+        const team = await teamsCollection.findOne(query);
+        if (!team) {
+          return res.status(404).send({ message: 'Team not found' });
+        }
+
+        // Delete all messages associated with this team
+        try {
+          const messageDeleteResult = await messagesCollection.deleteMany({ teamId: id });
+          console.log(`Deleted ${messageDeleteResult.deletedCount} messages for team ${id}`);
+        } catch (messageError) {
+          console.error('Error deleting team messages:', messageError);
+          // Note: We continue with team deletion even if message deletion fails
+        }
+
+        // Delete the team
+        const result = await teamsCollection.deleteOne(query);
+        
+        // If team deletion was successful and team had a leader, revert their role to 'member'
+        if (result.deletedCount > 0 && team.leader) {
+          try {
+            await usersCollection.updateOne(
+              { _id: new ObjectId(team.leader) },
+              { $set: { role: 'member' } }
+            );
+          } catch (roleError) {
+            console.error('Error reverting leader role:', roleError);
+            // Note: We don't fail the entire operation if role update fails
+          }
+        }
+
+        res.send({
+          ...result,
+          messagesDeleted: true,
+          message: 'Team and associated messages deleted successfully'
+        });
+      } catch (error) {
+        console.error('Error deleting team:', error);
+        res.status(500).send({ message: 'Failed to delete team' });
+      }
     });
 
     // Invitations endpoints
@@ -234,6 +275,137 @@ async function run() {
       };
       const result = await notificationsCollection.updateOne(filter, updateDoc);
       res.send(result);
+    });
+
+    // Team Chat Messages endpoints
+    // Send a message to a team
+    app.post('/teams/:teamId/messages', async(req, res) => {
+      const teamId = req.params.teamId;
+      const { message, senderId, senderName, senderEmail } = req.body;
+      
+      try {
+        // Verify team exists
+        const team = await teamsCollection.findOne({ _id: new ObjectId(teamId) });
+        if (!team) {
+          return res.status(404).send({ message: 'Team not found' });
+        }
+
+        // Verify sender is team leader or member
+        const isLeader = team.leader === senderId;
+        const isMember = team.members.includes(senderId);
+        
+        if (!isLeader && !isMember) {
+          return res.status(403).send({ message: 'You are not authorized to send messages to this team' });
+        }
+
+        const messageData = {
+          teamId: teamId,
+          message: message,
+          senderId: senderId,
+          senderName: senderName,
+          senderEmail: senderEmail,
+          createdAt: new Date().toISOString(),
+          edited: false
+        };
+
+        const result = await messagesCollection.insertOne(messageData);
+        res.send(result);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).send({ message: 'Failed to send message' });
+      }
+    });
+
+    // Get all messages for a team
+    app.get('/teams/:teamId/messages', async(req, res) => {
+      const teamId = req.params.teamId;
+      const { userId } = req.query;
+      
+      try {
+        // Verify team exists
+        const team = await teamsCollection.findOne({ _id: new ObjectId(teamId) });
+        if (!team) {
+          return res.status(404).send({ message: 'Team not found' });
+        }
+
+        // Verify user is team leader or member
+        const isLeader = team.leader === userId;
+        const isMember = team.members.includes(userId);
+        
+        if (!isLeader && !isMember) {
+          return res.status(403).send({ message: 'You are not authorized to view messages for this team' });
+        }
+
+        const messages = await messagesCollection.find({ teamId: teamId })
+          .sort({ createdAt: 1 })
+          .toArray();
+        
+        res.send(messages);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).send({ message: 'Failed to fetch messages' });
+      }
+    });
+
+    // Delete a message (only sender can delete their own message)
+    app.delete('/messages/:messageId', async(req, res) => {
+      const messageId = req.params.messageId;
+      const { userId } = req.body;
+      
+      try {
+        // Find the message
+        const message = await messagesCollection.findOne({ _id: new ObjectId(messageId) });
+        if (!message) {
+          return res.status(404).send({ message: 'Message not found' });
+        }
+
+        // Verify the user is the sender
+        if (message.senderId !== userId) {
+          return res.status(403).send({ message: 'You can only delete your own messages' });
+        }
+
+        const result = await messagesCollection.deleteOne({ _id: new ObjectId(messageId) });
+        res.send(result);
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        res.status(500).send({ message: 'Failed to delete message' });
+      }
+    });
+
+    // Edit a message (only sender can edit their own message)
+    app.put('/messages/:messageId', async(req, res) => {
+      const messageId = req.params.messageId;
+      const { userId, newMessage } = req.body;
+      
+      try {
+        // Find the message
+        const message = await messagesCollection.findOne({ _id: new ObjectId(messageId) });
+        if (!message) {
+          return res.status(404).send({ message: 'Message not found' });
+        }
+
+        // Verify the user is the sender
+        if (message.senderId !== userId) {
+          return res.status(403).send({ message: 'You can only edit your own messages' });
+        }
+
+        const updateDoc = {
+          $set: { 
+            message: newMessage,
+            edited: true,
+            editedAt: new Date().toISOString()
+          }
+        };
+
+        const result = await messagesCollection.updateOne(
+          { _id: new ObjectId(messageId) },
+          updateDoc
+        );
+        res.send(result);
+      } catch (error) {
+        console.error('Error editing message:', error);
+        res.status(500).send({ message: 'Failed to edit message' });
+      }
     });
 
     // Connect the client to the server	(optional starting in v4.7)

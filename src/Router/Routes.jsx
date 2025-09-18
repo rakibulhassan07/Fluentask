@@ -9,6 +9,7 @@ import Login from "../Pages/Login/Login";
 import Projects from "../Pages/Projects/Projects";
 import Tasks from "../Pages/Tasks/Tasks";
 import Team from "../Pages/Team/Team";
+import Messages from "../Pages/Messages/Messages";
 import Profile from "../Pages/Profile/Profile";
 import Settings from "../Pages/Settings/Settings";
 import CreateTask from "../Pages/CreateTask/CreateTask";
@@ -53,6 +54,14 @@ export const router = createBrowserRouter([
         element: (
           <PrivateRoute>
             <Team></Team>
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/messages",
+        element: (
+          <PrivateRoute>
+            <Messages></Messages>
           </PrivateRoute>
         ),
       },
