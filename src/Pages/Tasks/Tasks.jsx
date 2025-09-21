@@ -24,19 +24,20 @@ const Tasks = () => {
     const { user } = useContext(AuthContext);
     const axiosPublic = useAxiosPublic();
 
-    // Basic state
+    
     const [tasks, setTasks] = useState([]);
     const [teams, setTeams] = useState([]);
     const [users, setUsers] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('kanban');
+    const [selectedProject, setSelectedProject] = useState(null);
     console.log(users)
-    // Modal states
+    
     const [showTaskDetails, setShowTaskDetails] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     
-    // Quick task creation state
+    
     const [quickTasks, setQuickTasks] = useState({
         'To Do': '',
         'In Progress': '',
@@ -44,10 +45,10 @@ const Tasks = () => {
         'Done': ''
     });
     
-    // Drag and drop
+   
     const [draggedTask, setDraggedTask] = useState(null);
 
-    // Kanban columns
+   
     const columns = [
         { id: 'To Do', title: 'To Do', color: 'bg-gray-100' },
         { id: 'In Progress', title: 'In Progress', color: 'bg-blue-100' },
@@ -94,7 +95,6 @@ const Tasks = () => {
             const teamsData = response.data;
             setTeams(teamsData);
             
-              
             // Extract projects where current user is leader or member
             if (user && teamsData.length > 0 && users.length > 0) {
                 const currentUserEmail = user.email;
@@ -117,16 +117,27 @@ const Tasks = () => {
                             userProjects.push({
                                 name: team.project,
                                 teamName: team.name,
-                                role: isLeader ? 'Leader' : 'Member'
+                                teamId: team._id,
+                                role: isLeader ? 'Leader' : 'Member',
+                                teams: [team]
                             });
-                        } else if (isLeader && existingProject.role === 'Member') {
-                            // Update role to Leader if user is leader in any team for this project
-                            existingProject.role = 'Leader';
+                        } else {
+                            // Add team to existing project
+                            existingProject.teams.push(team);
+                            if (isLeader && existingProject.role === 'Member') {
+                                // Update role to Leader if user is leader in any team for this project
+                                existingProject.role = 'Leader';
+                            }
                         }
                     }
                 });
                 
                 setProjects(userProjects);
+                
+                // Auto-select first project if none selected
+                if (userProjects.length > 0 && !selectedProject) {
+                    setSelectedProject(userProjects[0]);
+                }
             }
         } catch (error) {
             console.error('Error fetching teams:', error);
@@ -232,16 +243,19 @@ const Tasks = () => {
         }
     };
 
-    // Get team members from user's teams (where user is leader or member)
+    // Get team members from selected project's teams
     const getUserTeamMembers = () => {
-        if (!user || teams.length === 0 || users.length === 0) return [];
+        if (!user || teams.length === 0 || users.length === 0 || !selectedProject) return [];
         
         const currentUser = users.find(u => u.email === user.email);
         if (!currentUser) return [];
         
         const teamMemberIds = new Set();
         
-        teams.forEach(team => {
+        // Get teams for the selected project
+        const projectTeams = selectedProject.teams || [];
+        
+        projectTeams.forEach(team => {
             // Check if current user is leader or member of this team
             const isLeader = team.leader === currentUser._id;
             const isMember = team.members && team.members.includes(currentUser._id);
@@ -264,14 +278,18 @@ const Tasks = () => {
             .filter(Boolean);
     };
 
-    // Filter tasks by user's team access
+    // Filter tasks by selected project
     const filteredTasks = tasks.filter(task => {
-        // Get team members that current user has access to
-        const accessibleMembers = getUserTeamMembers();
-        const accessibleMemberNames = accessibleMembers.map(member => member.name || member.email);
+        if (!selectedProject) return false;
         
-        // Only show tasks assigned to team members the user has access to
-        return accessibleMemberNames.includes(task.assignedTo);
+        // For tasks created with project field (new tasks)
+        if (task.project) {
+            return task.project === selectedProject.name;
+        }
+        
+        // For legacy tasks without project field - don't show them 
+        // to avoid confusion between projects until they're migrated
+        return false;
     });
 
     // Get tasks for specific column
@@ -351,7 +369,12 @@ const Tasks = () => {
     // Quick task creation
     const handleQuickTaskCreate = async (status) => {
         const taskTitle = quickTasks[status].trim();
-        if (!taskTitle) return;
+        if (!taskTitle || !selectedProject) {
+            if (!selectedProject) {
+                toast.error('Please select a project first');
+            }
+            return;
+        }
 
         // Get current user for assignedTo (assign to self by default)
         const currentUser = users.find(u => u.email === user?.email);
@@ -363,6 +386,8 @@ const Tasks = () => {
             priority: 'Medium',
             status: status,
             assignedTo: assignedTo,
+            project: selectedProject.name, // Add project field
+            projectId: selectedProject.teams[0]?._id, // Add project/team reference
             dueDate: null,
             estimatedHours: null,
             tags: [],
@@ -448,6 +473,77 @@ const Tasks = () => {
                         </div>
                     </div>
 
+                    {/* Project Selector */}
+                    {projects.length > 1 && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <MdAssignment className="w-5 h-5 text-purple-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">Select Project</h2>
+                                <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                    {projects.length} projects
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {projects.map((project, index) => (
+                                    <div 
+                                        key={index} 
+                                        onClick={() => setSelectedProject(project)}
+                                        className={`cursor-pointer border rounded-lg p-3 transition-all ${
+                                            selectedProject?.name === project.name
+                                                ? 'border-purple-300 bg-purple-50 shadow-md'
+                                                : 'border-gray-200 bg-gray-50 hover:border-purple-200 hover:bg-purple-25'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <h3 className="font-medium text-gray-900 text-sm">{project.name}</h3>
+                                                <p className="text-xs text-gray-600 mt-1">
+                                                    {project.role} • {project.teams.length} team{project.teams.length > 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                            <div className="ml-2">
+                                                {selectedProject?.name === project.name && (
+                                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-purple-100 text-purple-800">
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Current Project Display */}
+                    {selectedProject && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <MdAssignment className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">Current Project</h2>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-medium text-gray-900 text-sm">{selectedProject.name}</h3>
+                                        <p className="text-xs text-gray-600 mt-1">
+                                            Role: {selectedProject.role} • Teams: {selectedProject.teams.map(t => t.name).join(', ')}
+                                        </p>
+                                    </div>
+                                    <div className="ml-2">
+                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                            selectedProject.role === 'Leader' 
+                                                ? 'bg-yellow-100 text-yellow-800' 
+                                                : 'bg-green-100 text-green-800'
+                                        }`}>
+                                            {selectedProject.role}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Projects Section */}
                     {projects.length > 0 && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
@@ -483,13 +579,16 @@ const Tasks = () => {
                     )}
 
                     {/* Team Contribution Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <MdGroup className="w-5 h-5 text-green-600" />
-                                <h2 className="text-lg font-semibold text-gray-900">Team Contribution</h2>
-                                <MdTrendingUp className="w-4 h-4 text-green-600" />
-                            </div>
+                    {selectedProject && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <MdGroup className="w-5 h-5 text-green-600" />
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        Team Contribution - {selectedProject.name}
+                                    </h2>
+                                    <MdTrendingUp className="w-4 h-4 text-green-600" />
+                                </div>
                             <div className="flex items-center gap-4 text-sm">
                                 <div className="text-center">
                                     <div className="font-bold text-lg text-gray-900">
@@ -613,6 +712,7 @@ const Tasks = () => {
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Controls Bar */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -647,7 +747,8 @@ const Tasks = () => {
                 </div>
 
                 {/* Task Views */}
-                {viewMode === 'kanban' ? (
+                {selectedProject ? (
+                    viewMode === 'kanban' ? (
                     // Kanban Board
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {columns.map(column => {
@@ -672,9 +773,9 @@ const Tasks = () => {
                                                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-move hover:shadow-md transition-all"
                                             >
                                                 {/* Task Header */}
-                                                <div className="mb-2">
+                                                <div className="mb-2 flex items-start justify-between">
                                                     <h4 
-                                                        className="font-medium text-gray-900 text-sm cursor-pointer hover:text-blue-600"
+                                                        className="font-medium text-gray-900 text-sm cursor-pointer hover:text-blue-600 flex-1"
                                                         onClick={() => {
                                                             setSelectedTask(task);
                                                             setShowTaskDetails(true);
@@ -682,6 +783,19 @@ const Tasks = () => {
                                                     >
                                                         {task.title}
                                                     </h4>
+                                                    {/* Delete Button - Show for leaders or task owners */}
+                                                    {(isTeamLeader() || task.assignedTo === (user?.name || user?.email)) && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDelete(task._id);
+                                                            }}
+                                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                                                            title="Delete Task"
+                                                        >
+                                                            <MdDelete className="w-3 h-3" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 
                                                 {/* Task Description */}
@@ -774,7 +888,7 @@ const Tasks = () => {
                                     <MdAssignment className="mx-auto h-12 w-12 text-gray-400" />
                                     <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        {selectedAssignee ? "Try clearing the filter." : "Get started by creating a new task."}
+                                        Get started by creating a new task.
                                     </p>
                                 </div>
                             ) : (
@@ -819,6 +933,18 @@ const Tasks = () => {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )
+                ) : (
+                    // No Project Selected
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                        <div className="text-center">
+                            <MdAssignment className="mx-auto h-16 w-16 text-gray-400" />
+                            <h3 className="mt-4 text-lg font-medium text-gray-900">No Project Selected</h3>
+                            <p className="mt-2 text-sm text-gray-500">
+                                Please select a project above to view tasks and team contributions.
+                            </p>
                         </div>
                     </div>
                 )}
