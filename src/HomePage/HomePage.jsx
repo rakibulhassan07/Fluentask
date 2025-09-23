@@ -186,26 +186,7 @@ const HomePage = () => {
                 </div>
             </div>
 
-            {/* Stats Section */}
-            <div className="py-16 bg-blue-600">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h2 className="text-3xl font-bold text-white text-center mb-12">
-                        Teams across the globe run on Fluentask
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                        {stats.map((stat, index) => (
-                            <div key={index}>
-                                <div className="text-4xl font-bold text-white mb-2">
-                                    {stat.number}
-                                </div>
-                                <div className="text-blue-100">
-                                    {stat.label}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+           
 
             {/* Templates Section */}
             <div className="py-20 bg-gray-50">
