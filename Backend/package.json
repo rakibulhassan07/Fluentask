@@ -1,18 +1,26 @@
 {
-  "name": "backend",
+  "name": "fluentask-backend",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["express", "mongodb", "task-management"],
+  "author": "Rakibul Hassan",
   "license": "ISC",
-  "description": "",
+  "description": "Fluentask Backend API",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "mongodb": "^6.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
