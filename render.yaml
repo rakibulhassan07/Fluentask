@@ -1,0 +1,37 @@
+services:
+  # Backend API Service
+  - type: web
+    name: fluentask-backend
+    env: node
+    plan: free
+    rootDir: ./Backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_USER
+        fromSecret: DB_USER
+      - key: DB_PASSWORD
+        fromSecret: DB_PASSWORD
+      - key: PORT
+        value: 10000
+    
+  # Frontend Static Site
+  - type: static
+    name: fluentask-frontend
+    env: node
+    plan: free
+    rootDir: ./
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: fluentask-backend
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

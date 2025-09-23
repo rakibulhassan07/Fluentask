@@ -1,5 +1,5 @@
 {
-  "name": "fluentask-frontend",
+  "name": "fluentask",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -8,7 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "vite preview --port 3000"
+    "start": "vite preview --port 3000",
+    "backend:install": "cd Backend && npm install",
+    "backend:dev": "cd Backend && npm run dev",
+    "backend:start": "cd Backend && npm start",
+    "dev:full": "concurrently \"npm run backend:dev\" \"npm run dev\"",
+    "build:full": "npm run backend:install && npm run build"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
@@ -31,6 +36,7 @@
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^8.2.2",
     "daisyui": "^5.0.50",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",

@@ -1,51 +1,141 @@
-# Deployment Instructions for Render
+# Fluentask Deployment Guide - Monorepo on Render
 
-## Backend Deployment Steps:
+## Overview
+This guide helps you deploy the complete Fluentask application (frontend + backend) as a monorepo on Render using the included `render.yaml` configuration file.
 
-1. **Create Web Service**:
-   - Go to Render dashboard
-   - Click "New +" → "Web Service"
-   - Connect your GitHub repository
-   - **Root Directory**: `Backend`
-   - **Environment**: Node
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
+## Prerequisites
+1. GitHub repository with your Fluentask code
+2. Render account (free tier works)
+3. MongoDB Atlas database (get connection credentials)
 
-2. **Set Environment Variables**:
+## Automatic Deployment (Recommended)
+
+### Step 1: Connect Repository to Render
+1. Go to [Render Dashboard](https://dashboard.render.com)
+2. Click "New +" → "Blueprint"
+3. Connect your GitHub repository containing the Fluentask project
+4. Render will automatically detect the `render.yaml` file
+
+### Step 2: Configure Environment Variables
+Render will create two services automatically:
+- `fluentask-backend` (Web Service)
+- `fluentask-frontend` (Static Site)
+
+**For Backend Service, set these environment variables:**
+```
+NODE_ENV=production
+DB_USER=FluentaskUser
+DB_PASSWORD=OszVoSMx7dugmeaV
+PORT=10000
+```
+
+**For Frontend Service:**
+The `VITE_API_URL` will be automatically set to point to your backend service.
+
+### Step 3: Deploy
+1. Click "Apply" to start the deployment
+2. Render will build and deploy both services
+3. The frontend will automatically get the correct backend URL
+
+## Manual Deployment (Alternative)
+
+If you prefer to deploy services separately:
+
+### Backend Service:
+1. New → Web Service
+2. Root Directory: `Backend`
+3. Build Command: `npm install`
+4. Start Command: `npm start`
+5. Environment Variables: (same as above)
+
+### Frontend Service:
+1. New → Static Site
+2. Root Directory: `/` (root)
+3. Build Command: `npm install && npm run build`
+4. Publish Directory: `dist`
+5. Environment Variables:
    ```
-   NODE_ENV=production
-   DB_USER=FluentaskUser
-   DB_PASSWORD=OszVoSMx7dugmeaV
-   PORT=10000
+   VITE_API_URL=https://your-backend-service-url.onrender.com
    ```
 
-3. **Note your backend URL**: `https://your-backend-name.onrender.com`
+## Environment Configuration
 
-## Frontend Deployment Steps:
+### Database Setup (MongoDB Atlas)
+1. Create a MongoDB Atlas cluster
+2. Create database user: `FluentaskUser`
+3. Get connection string
+4. Update environment variables with your credentials
 
-1. **Create Static Site**:
-   - Go to Render dashboard
-   - Click "New +" → "Static Site"
-   - Connect your GitHub repository
-   - **Root Directory**: `/` (leave empty)
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
+### CORS Configuration
+The backend is pre-configured to accept requests from:
+- Development: `http://localhost:5173`
+- Production: Automatically configured for Render deployment
 
-2. **Set Environment Variables**:
-   ```
-   VITE_API_URL=https://your-backend-name.onrender.com
-   ```
+## Development Commands
 
-3. **Update Backend CORS** (Important!):
-   - After frontend deployment, update the CORS origin in `Backend/index.js`
-   - Replace `https://fluentask-frontend.onrender.com` with your actual frontend URL
+```bash
+# Install all dependencies
+npm install
 
-## Final Steps:
+# Install backend dependencies
+npm run backend:install
 
-1. Deploy backend first
-2. Note the backend URL
-3. Deploy frontend with correct VITE_API_URL
-4. Update CORS in backend with frontend URL
-5. Test the connection
+# Run full stack in development
+npm run dev:full
+
+# Run frontend only
+npm run dev
+
+# Run backend only
+npm run backend:dev
+
+# Build for production
+npm run build
+
+# Build full stack
+npm run build:full
+```
+
+## Deployment URLs
+After successful deployment:
+- **Frontend**: `https://fluentask-frontend.onrender.com`
+- **Backend API**: `https://fluentask-backend.onrender.com`
+- **Health Check**: `https://fluentask-backend.onrender.com/health`
+
+## Troubleshooting
+
+### Common Issues:
+1. **Build fails**: Check that all dependencies are listed in package.json
+2. **CORS errors**: Verify the backend CORS configuration includes your frontend URL
+3. **API connection fails**: Check that VITE_API_URL points to the correct backend URL
+4. **Database connection fails**: Verify MongoDB Atlas credentials and IP whitelist
+
+### Debug Steps:
+1. Check Render logs for both services
+2. Test backend health endpoint: `/health`
+3. Verify environment variables are set correctly
+4. Ensure MongoDB Atlas allows connections from anywhere (0.0.0.0/0)
+
+## File Structure
+```
+Fluentask/
+├── render.yaml          # Render deployment configuration
+├── package.json         # Frontend dependencies and scripts
+├── vite.config.js       # Vite configuration
+├── .env.example         # Environment variables template
+├── Backend/
+│   ├── package.json     # Backend dependencies
+│   ├── index.js         # Express server
+│   └── ...
+├── src/                 # React frontend source
+└── dist/               # Built frontend (created during build)
+```
+
+## Support
+If you encounter issues:
+1. Check Render service logs
+2. Verify environment variables
+3. Test API endpoints directly
+4. Check MongoDB Atlas connection
 
 Your app will be live at: `https://your-frontend-name.onrender.com`
