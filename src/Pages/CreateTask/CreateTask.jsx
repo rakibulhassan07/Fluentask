@@ -7,7 +7,7 @@ const CreateTask = () => {
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">Create Task</h1>
                 <p className="text-gray-600 mb-8">Create a new task for your project</p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <p className="text-blue-800">Task creation form is coming soon! ➕</p>
+                    <p className="text-blue-800">Task creation form is coming soon!</p>
                 </div>
             </div>
         </div>

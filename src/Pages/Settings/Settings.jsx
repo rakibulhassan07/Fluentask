@@ -7,7 +7,7 @@ const Settings = () => {
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">Settings</h1>
                 <p className="text-gray-600 mb-8">Customize your account preferences</p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <p className="text-blue-800">Settings page is coming soon! ⚙️</p>
+                    <p className="text-blue-800">Settings page is coming soon!</p>
                 </div>
             </div>
         </div>

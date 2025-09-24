@@ -17,7 +17,6 @@ import {
 const Messages = () => {
     const { user } = useContext(AuthContext);
     const axiosPublic = useAxiosPublic();
-
     // State management
     const [users, setUsers] = useState([]);
     const [teams, setTeams] = useState([]);
@@ -166,23 +165,27 @@ const Messages = () => {
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
         });
-
+      
         if (result.isConfirmed) {
             try {
                 const currentUser = users.find(u => u.email === user?.email);
                 await axiosPublic.delete(`/messages/${messageId}`, {
                     data: { userId: currentUser?._id }
                 });
-                await fetchTeamMessages(selectedTeam._id);
+                
                 toast.success('Message deleted!');
             } catch (error) {
                 console.error('Error deleting message:', error);
                 toast.error('Failed to delete message');
             }
+           
         }
+        
     };
+   
 
     const getUserById = (userId) => {
         return users.find(user => user._id === userId);
@@ -321,35 +324,44 @@ const Messages = () => {
                                             messages.map(message => {
                                                 const currentUser = users.find(u => u.email === user?.email);
                                                 const isOwnMessage = message.senderId === currentUser?._id;
+                                                const isDeleted = message.deleted;
                                                 
                                                 return (
                                                     <div key={message._id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`max-w-[70%] rounded-lg p-3 ${
-                                                            isOwnMessage 
-                                                                ? 'bg-blue-600 text-white' 
-                                                                : 'bg-gray-100 text-gray-900'
+                                                            isDeleted
+                                                                ? 'bg-gray-50 text-gray-500 border border-gray-200'
+                                                                : isOwnMessage 
+                                                                    ? 'bg-blue-600 text-white' 
+                                                                    : 'bg-gray-100 text-gray-900'
                                                         }`}>
-                                                            {!isOwnMessage && (
+                                                            {!isOwnMessage && !isDeleted && (
                                                                 <div className="text-xs font-medium mb-1 opacity-70">
                                                                     {message.senderName || message.senderEmail}
                                                                 </div>
                                                             )}
-                                                            <div className="text-sm">{message.message}</div>
-                                                            {message.edited && (
+                                                            <div className={`text-sm ${isDeleted ? 'italic' : ''}`}>
+                                                                {message.message}
+                                                            </div>
+                                                            {message.edited && !isDeleted && (
                                                                 <div className="text-xs opacity-60 mt-1">(edited)</div>
                                                             )}
                                                             <div className="flex items-center justify-between mt-2">
                                                                 <div className="text-xs opacity-60">
                                                                     {new Date(message.createdAt).toLocaleTimeString()}
                                                                 </div>
-                                                                {isOwnMessage && (
+                                                                {isOwnMessage && !isDeleted && (
                                                                     <button
+
                                                                         onClick={() => deleteMessage(message._id)}
-                                                                        className="text-xs opacity-60 hover:opacity-100 ml-2"
+                                                                        className="text-xs opacity-60 hover:opacity-100 ml-2 hover:text-red-400 transition-colors"
+                                                                        title="Delete message"
+                                                                        
                                                                     >
                                                                         <MdDelete className="w-3 h-3" />
                                                                     </button>
                                                                 )}
+                                                               
                                                             </div>
                                                         </div>
                                                     </div>

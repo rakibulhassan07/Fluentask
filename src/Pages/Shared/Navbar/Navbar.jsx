@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { MdDashboard, MdAssignment, MdPeople, MdNotifications, MdSearch, MdAdd, MdAccountCircle, MdSettings, MdLogout, MdCheck, MdClose, MdChat } from "react-icons/md";
 import { FaTasks, FaUser } from "react-icons/fa";
 import { AuthContext } from "../../../provider/AuthProvider";
@@ -11,9 +11,27 @@ const Navbar = () => {
   const [invitations, setInvitations] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [users, setUsers] = useState([]);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, logOut } = useContext(AuthContext);
   const axiosPublic = useAxiosPublic();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Scroll detection effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Check if current path matches navigation link
+  const isActiveLink = (path) => {
+    return location.pathname === path;
+  };
 
   const handleLogin = () => {
     navigate('/login');
@@ -158,41 +176,81 @@ const Navbar = () => {
 
 
   return (
-    <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+    <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20' 
+        : 'bg-white/95 border-b border-gray-200 shadow-sm'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16">
           {/* Left: Logo */}
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+            <Link to="/" className="flex items-center space-x-2 transition-all duration-200 hover:scale-105">
+              <div className={`w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                isScrolled ? 'shadow-lg' : 'shadow-md'
+              }`}>
                 <FaTasks className="w-4 h-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Fluentask</span>
+              <span className={`text-xl font-bold transition-colors ${
+                isScrolled ? 'text-gray-900' : 'text-gray-900'
+              }`}>Fluentask</span>
             </Link>
           </div>
 
           {/* Center: Navigation - Equal spacing */}
           <nav className="flex flex-1 justify-center">
-            <div className="flex space-x-8">
-              <Link to="/" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
+            <div className="flex space-x-2">
+              <Link 
+                to="/" 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  isActiveLink('/') 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
                 <MdDashboard className="w-4 h-4" />
                 Home
-              </Link>
-               <Link to="/team" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
-                <MdPeople className="w-4 h-4" />
-                Team
+                {isActiveLink('/') && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"></div>}
               </Link>
               
-              <Link to="/projects" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
+              <Link 
+                to="/team" 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 relative ${
+                  isActiveLink('/team') 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
+                <MdPeople className="w-4 h-4" />
+                Team
+                {isActiveLink('/team') && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"></div>}
+              </Link>
+              
+              <Link 
+                to="/projects" 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 relative ${
+                  isActiveLink('/projects') 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
                 <FaTasks className="w-4 h-4" />
                 Projects
+                {isActiveLink('/projects') && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"></div>}
               </Link>
-              <Link to="/tasks" className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium">
+              
+              <Link 
+                to="/tasks" 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 relative ${
+                  isActiveLink('/tasks') 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
                 <MdAssignment className="w-4 h-4" />
                 Tasks
+                {isActiveLink('/tasks') && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"></div>}
               </Link>
-             
-             
             </div>
           </nav>
 
@@ -203,12 +261,18 @@ const Navbar = () => {
               <div className="relative">
                 <button 
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className={`p-2 rounded-lg transition-all duration-200 relative ${
+                    isScrolled 
+                      ? 'hover:bg-white/50 backdrop-blur-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
-                  <MdNotifications className="w-5 h-5 text-gray-600" />
+                  <MdNotifications className={`w-5 h-5 transition-colors ${
+                    isScrolled ? 'text-gray-700' : 'text-gray-600'
+                  }`} />
                   {/* Notification badge */}
                   {getTotalNotificationCount() > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-lg">
                       {getTotalNotificationCount() > 99 ? '99+' : getTotalNotificationCount()}
                     </span>
                   )}
@@ -347,23 +411,29 @@ const Navbar = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`flex items-center space-x-2 p-1 rounded-lg transition-all duration-200 ${
+                    isScrolled 
+                      ? 'hover:bg-white/50 backdrop-blur-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   {user.photoURL && !imageError ? (
                     <img
                       src={user.photoURL}
                       alt="Profile"
-                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-300"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-300 shadow-sm"
                       onError={handleImageError}
                     />
                   ) : (
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-sm">
                       <span className="text-white text-sm font-semibold">
                         {getInitials(user.displayName || user.email)}
                       </span>
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className={`text-sm font-medium transition-colors ${
+                    isScrolled ? 'text-gray-800' : 'text-gray-700'
+                  }`}>
                     {user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0]}
                   </span>
                 </button>
@@ -433,10 +503,14 @@ const Navbar = () => {
               /* Login Button for non-authenticated users */
               <button
                 onClick={handleLogin}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                  isScrolled 
+                    ? 'bg-white/50 hover:bg-white/70 backdrop-blur-sm text-gray-800' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
               >
-                <FaUser className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Login</span>
+                <FaUser className="w-4 h-4" />
+                <span className="text-sm">Login</span>
               </button>
             )}
             

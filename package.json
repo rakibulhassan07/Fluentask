@@ -1,13 +1,14 @@
 {
-  "name": "fluentask",
+  "name": "fluentask-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite preview --port 3000"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
