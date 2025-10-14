@@ -429,9 +429,41 @@ const Tasks = () => {
         e.preventDefault();
     };
 
+    // Define the workflow sequence
+    const workflowSequence = ['To Do', 'In Progress', 'In Review', 'Done'];
+
+    // Validate if a task can move to a specific status
+    const canMoveToStatus = (currentStatus, targetStatus) => {
+        const currentIndex = workflowSequence.indexOf(currentStatus);
+        const targetIndex = workflowSequence.indexOf(targetStatus);
+        
+        // Allow moving backwards (for corrections)
+        if (targetIndex < currentIndex) {
+            return true;
+        }
+        
+        // Allow moving to the next status in sequence
+        if (targetIndex === currentIndex + 1) {
+            return true;
+        }
+        
+        // Don't allow skipping phases
+        return false;
+    };
+
     const handleDrop = async (e, newStatus) => {
         e.preventDefault();
         if (draggedTask && draggedTask.status !== newStatus) {
+            // Validate workflow progression
+            if (!canMoveToStatus(draggedTask.status, newStatus)) {
+                const currentIndex = workflowSequence.indexOf(draggedTask.status);
+                const nextStatus = workflowSequence[currentIndex + 1];
+                
+                toast.error(`Task must move through workflow phases sequentially. Move to "${nextStatus}" first.`);
+                setDraggedTask(null);
+                return;
+            }
+
             try {
                 // Update task status in backend
                 await axiosPublic.put(`/tasks/${draggedTask._id}`, {
@@ -749,19 +781,74 @@ const Tasks = () => {
                 {/* Task Views */}
                 {selectedProject ? (
                     viewMode === 'kanban' ? (
-                    // Kanban Board
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <>
+                        {/* Workflow Indicator */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <MdTrendingUp className="w-5 h-5 text-blue-600" />
+                                    Workflow Sequence
+                                </h3>
+                                <div className="flex items-center gap-4">
+                                    {workflowSequence.map((status, index) => (
+                                        <div key={status} className="flex items-center">
+                                            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                                status === 'To Do' ? 'bg-gray-100 text-gray-800' :
+                                                status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                                status === 'In Review' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                                {status}
+                                            </div>
+                                            {index < workflowSequence.length - 1 && (
+                                                <div className="mx-2 text-gray-400">→</div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2">
+                                Tasks must move through each phase sequentially. You can move tasks backward for corrections.
+                            </p>
+                        </div>
+                        
+                        {/* Kanban Board */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {columns.map(column => {
                             const columnTasks = getColumnTasks(column.id);
+                            const canDropHere = draggedTask ? canMoveToStatus(draggedTask.status, column.id) : true;
+                            
                             return (
                                 <div
                                     key={column.id}
-                                    className={`${column.color} rounded-lg p-4 min-h-[500px]`}
+                                    className={`${column.color} rounded-lg p-4 min-h-[500px] transition-all duration-200 ${
+                                        draggedTask && !canDropHere 
+                                            ? 'opacity-50 cursor-not-allowed border-2 border-red-300' 
+                                            : draggedTask && canDropHere && draggedTask.status !== column.id
+                                            ? 'border-2 border-green-400 shadow-lg'
+                                            : ''
+                                    }`}
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, column.id)}
                                 >
-                                    <h3 className="font-semibold text-gray-900 mb-4">
-                                        {column.title} ({columnTasks.length})
+                                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                                        <span>{column.title} ({columnTasks.length})</span>
+                                        {draggedTask && (
+                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                canDropHere && draggedTask.status !== column.id
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : !canDropHere
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-gray-100 text-gray-600'
+                                            }`}>
+                                                {canDropHere && draggedTask.status !== column.id
+                                                    ? 'Valid'
+                                                    : !canDropHere
+                                                    ? 'Skip'
+                                                    : 'Current'
+                                                }
+                                            </span>
+                                        )}
                                     </h3>
                                     
                                     <div className="space-y-3">
@@ -878,6 +965,7 @@ const Tasks = () => {
                             );
                         })}
                     </div>
+                    </>
                 ) : (
                     // List View
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
