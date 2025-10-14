@@ -29,32 +29,7 @@ const HomePage = () => {
         }
     ];
 
-    const solutions = [
-        {
-            id: 'software',
-            title: 'Software Development',
-            subtitle: 'Dream it, plan it, launch it',
-            description: 'The #1 tool for agile teams is now for all teams. Plan, track, and deliver your biggest ideas together.',
-            icon: <MdDashboard className="w-6 h-6" />,
-            color: 'blue'
-        },
-        {
-            id: 'project',
-            title: 'Project Management',
-            subtitle: 'Organize work, deliver results',
-            description: 'Keep projects on track with powerful planning tools and real-time collaboration.',
-            icon: <BiTargetLock className="w-6 h-6" />,
-            color: 'green'
-        },
-        {
-            id: 'team',
-            title: 'Team Coordination',
-            subtitle: 'Connect and collaborate',
-            description: 'Bring teams together with shared goals, clear priorities, and seamless communication.',
-            icon: <FaUsers className="w-6 h-6" />,
-            color: 'purple'
-        }
-    ];
+    
 
     const stats = [
         { number: '300,000+', label: 'Companies trust Fluentask' },
@@ -83,40 +58,16 @@ const HomePage = () => {
     return (
         <div className="min-h-screen bg-white">
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-20 overflow-hidden">
-                {/* Animated background elements */}
-                <div className="absolute inset-0">
-                    <div className="absolute top-0 -left-4 w-72 h-72 bg-gradient-to-r from-blue-300 to-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-                    <div className="absolute top-0 -right-4 w-72 h-72 bg-gradient-to-r from-purple-300 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-2000"></div>
-                    <div className="absolute -bottom-8 left-20 w-72 h-72 bg-gradient-to-r from-blue-300 to-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-4000"></div>
-                    
-                    {/* Additional blur layers for enhanced effect */}
-                    <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-gradient-to-r from-indigo-200 to-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-20 animate-pulse animation-delay-1000"></div>
-                    <div className="absolute bottom-1/3 left-1/3 w-80 h-80 bg-gradient-to-r from-pink-200 to-blue-300 rounded-full mix-blend-multiply filter blur-2xl opacity-25 animate-pulse animation-delay-3000"></div>
-                    
-                    {/* Floating geometric shapes */}
-                    <div className="absolute top-20 left-10 w-4 h-4 bg-blue-400 rounded-full animate-bounce opacity-60 filter blur-sm"></div>
-                    <div className="absolute top-32 right-20 w-6 h-6 bg-purple-400 rounded-full animate-bounce opacity-50 animation-delay-1000 filter blur-sm"></div>
-                    <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-indigo-400 rounded-full animate-bounce opacity-40 animation-delay-2000 filter blur-sm"></div>
-                    <div className="absolute bottom-20 right-1/3 w-5 h-5 bg-pink-400 rounded-full animate-bounce opacity-50 animation-delay-3000 filter blur-sm"></div>
-                </div>
+            <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50  overflow-hidden">
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28">
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
                     <div className="text-center">
-                        {/* Badge/Announcement */}
-                        <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/60 backdrop-blur-xl shadow-xl border border-white/30 mb-8 hover:scale-105 hover:bg-white/70 transition-all duration-300">
-                            <span className="flex h-2 w-2 mr-3">
-                                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                            </span>
-                            <span className="text-sm font-semibold text-gray-800">New features available now</span>
-                        </div>
-
+                    
                         {/* Main heading with enhanced styling */}
                         <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 mb-8 leading-tight">
                             The new{" "}
                             <span className="relative">
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-600 to-blue-700 animate-pulse">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-600 to-blue-700">
                                     Fluentask
                                 </span>
                                 <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transform scale-x-0 animate-pulse"></div>

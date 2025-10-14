@@ -28,7 +28,7 @@ const Profile = () => {
                             <h2 className="text-2xl font-semibold text-gray-900">
                                 {user.displayName || 'User'}
                             </h2>
-                            <p className="text-gray-600">{user.email}</p>
+                           
                         </div>
                     </div>
                     
@@ -37,11 +37,11 @@ const Profile = () => {
                             <h3 className="text-lg font-medium text-gray-900 mb-2">Account Information</h3>
                             <dl className="space-y-2">
                                 <div>
-                                    <dt className="text-sm font-medium text-gray-500">Email</dt>
+                                    <dt className="text-sm font-bold text-gray-500">Email</dt>
                                     <dd className="text-sm text-gray-900">{user.email}</dd>
                                 </div>
                                 <div>
-                                    <dt className="text-sm font-medium text-gray-500">Display Name</dt>
+                                    <dt className="text-sm  text-gray-500 font-bold">Name</dt>
                                     <dd className="text-sm text-gray-900">{user.displayName || 'Not set'}</dd>
                                 </div>
                                 
@@ -49,11 +49,10 @@ const Profile = () => {
                         </div>
                         
                         <div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Authentication Provider</h3>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Authentication Provider With</h3>
                             <dl className="space-y-2">
                                 {user.providerData?.map((provider, index) => (
-                                    <div key={index}>
-                                        <dt className="text-sm font-medium text-gray-500">Provider</dt>
+                                    <div key={index}>  
                                         <dd className="text-sm text-gray-900 capitalize">
                                             {provider.providerId.replace('.com', '')}
                                         </dd>
