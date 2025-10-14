@@ -13,7 +13,6 @@ import {
     MdCalendarToday,
     MdClose,
     MdAssignment,
-    MdVisibility,
     MdAccessTime,
     MdGroup,
     MdTrendingUp,
@@ -798,7 +797,7 @@ const Tasks = () => {
                                                 status === 'In Review' ? 'bg-yellow-100 text-yellow-800' :
                                                 'bg-green-100 text-green-800'
                                             }`}>
-                                                {status}
+                                            {status}
                                             </div>
                                             {index < workflowSequence.length - 1 && (
                                                 <div className="mx-2 text-gray-400">→</div>
@@ -1000,15 +999,6 @@ const Tasks = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedTask(task);
-                                                            setShowTaskDetails(true);
-                                                        }}
-                                                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
-                                                    >
-                                                        <MdVisibility className="w-4 h-4" />
-                                                    </button>
                                                     <button
                                                         onClick={() => handleDelete(task._id)}
                                                         className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors"
